@@ -1,5 +1,4 @@
-import Cocoa
+import PlaygroundSupport
+import MetalKit
 
-var str = "Hello, playground"
-print(str);
 
