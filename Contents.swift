@@ -20,3 +20,50 @@ let mesh = try MTKMesh(mesh: mdlMesh, device: device)
 
 guard let commandQueue = device.makeCommandQueue() else { fatalError("Could not create a command queue") }
 
+let shader = """
+#include <metal_stdlib>
+using namespace metal;
+
+struct VertexIn {
+
+float4 position [[ attribute(0) ]];
+};
+
+vertex float4 vertex_main(const VertexIn vertex_in [[ stage_in ]]) {
+    return vertex_in.position;
+}
+
+fragment float4 fragment_main() {
+    return float4(1,0,0,1);
+}
+"""
+
+//(above)creating shader func in c++, these programs run directly on the GPU: vertex_main - manipulate vertex positions, fragment_main - pixel colour
+//(below) setup metal lib that contains the 2 func above
+let library = try device.makeLibrary(source: shader, options: nil)
+let vertexFunction = library.makeFunction(name: "vertex_main")
+let fragmentFunction = library.makeFunction(name: "fragment_main")
+
+// recall that a descriptor is needed to control the piepline state; so we setup the correct shader funcs and a vertex descriptor.
+// the vertex descriptor tells the metal buffer how the vertex should be laid out, metal I/O already had one ready for us
+let descriptor = MTLRenderPipelineDescriptor()
+descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+descriptor.vertexFunction = vertexFunction
+descriptor.fragmentFunction = fragmentFunction
+descriptor.vertexDescriptor = MTKMetalVertexDescriptorFromModelIO(mesh.vertexDescriptor)
+
+//pipelinState takes up processing time, so think one-time setup! Though you may need multiple pipeleines for different shader funcs/ vertex layouts
+let pipelineState = try device.makeRenderPipelineState(descriptor: descriptor)
+
+//rendering - per frame
+//1 - cmd buffer, stores all cmds that you'll ask of the GPU
+guard let commmandBuffer = commandQueue.makeCommandBuffer(),
+//2 - this view render pass descriptor holds data on rederner destinations known as attachments.
+    // each attachemnt has info on which texture to store and whether to keep it thrrugh the piepline process
+    // we use this pass descriptor to create our render encoder
+let descriptor = view.currentRenderPassDescriptor,
+//3 - render encoder, holds all the neccasry info we send to the GPU
+let renderEncoder = commmandBuffer.makeRenderCommandEncoder(descriptor: descriptor)
+else { fatalError() }
+
+renderEncoder.setRenderPipelineState(pipelineState)
