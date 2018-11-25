@@ -67,3 +67,26 @@ let renderEncoder = commmandBuffer.makeRenderCommandEncoder(descriptor: descript
 else { fatalError() }
 
 renderEncoder.setRenderPipelineState(pipelineState)
+//verticles info is stored in that sphere mesh we made earlier, we pass this LIST on to renderEncoder
+renderEncoder.setVertexBuffer(mesh.vertexBuffers[0].buffer, offset: 0, index: 0)
+//offset and index are used to locate within the buffer where in the vertex info starts
+
+//remember that mesh is made up of submeshes, different material types, you can render one vertex multiple times
+// this sphere only has 1 submesh
+
+guard let submesh = mesh.submeshes.first else { fatalError() }
+
+//drawing the shape
+// telling the GPU to render the vertex buffer consisting of triangles placed in the corect order via the sibmesh index info
+//this is acutally NOT the rendering, we need to pass ALL of the command buffers commands on
+renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: submesh.indexBuffer.buffer, indexBufferOffset: 0)
+
+//1 - no more draw calls
+renderEncoder.endEncoding()
+//2 - MTKView is bacaked by Core Animation metal layer, making it possible to draw texts via metal
+guard let drawable = view.currentDrawable else { fatalError() }
+//3 - command buffer presents the MTKView drawable and commits this to the GPU
+commmandBuffer.present(drawable)
+commmandBuffer.commit()
+
+PlaygroundPage.current.liveView = view
